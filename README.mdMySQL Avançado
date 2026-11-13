@@ -1,63 +1,42 @@
-# 🚀 Projeto E-commerce & Gestão Corporativa: MySQL Avançado (DIO)
+# 🗄️ Personalizando Acessos e Automatizando Ações no MySQL - E-commerce & Gestão Corporativa
 
-Repositório dedicado à entrega do desafio de projeto da **DIO (Digital Innovation One)**, focado em **Personalização de Acessos com Views**, **Controle de Permissões (DCL)** e **Automação de Ações com Triggers** utilizando o MySQL.
-
----
-
-## 🛠️ Tecnologias e Ferramentas Utilizadas
-* **Banco de Dados:** MySQL / MySQL Workbench
-* **Linguagem:** SQL (DDL, DML, DCL)
-* **Conceitos Aplicados:** Relacionamentos (1:N), Views Gerenciais, Segurança baseada em Contas de Usuários e Triggers (Gatilhos de Banco).
+Este repositório contém o desenvolvimento e a implementação de um ambiente de banco de dados relacional no MySQL, unindo a gestão de colaboradores/departamentos ao cenário de um e-commerce. O projeto foi construído aplicando práticas de governança de dados, controle de privilégios (`DCL`), visões analíticas (`Views`) e automação de regras de negócio (`Triggers`).
 
 ---
 
-## 📂 Estrutura do Banco de Dados (`ecommerce`)
+## 🎯 Objetivo do Projeto
 
-O projeto integra a modelagem de departamentos/colaboradores com o cenário de e-commerce, estruturando as seguintes tabelas principais:
-1. **`dept`**: Tabela de departamentos (Pai) com chave primária e restrições de unicidade.
-2. **`emp`**: Tabela de colaboradores vinculada aos departamentos através de Chave Estrangeira (`FOREIGN KEY`) com suporte a cascata (`CASCADE`).
-3. **`clients`**: Tabela de clientes do e-commerce.
-4. **`client_audit_log`**: Tabela de log estruturada para auditoria de remoção de registros.
+Estruturar um banco de dados (`ecommerce`) seguro e automatizado no MySQL Workbench, capaz de restringir o acesso a informações sensíveis conforme o nível hierárquico do usuário e garantir a integridade e rastreabilidade dos dados de clientes por meio de gatilhos disparados antes de atualizações e exclusões.
 
 ---
 
-## 📊 Parte 1 – Personalização de Acessos com Views
+## 🧠 Arquitetura do Banco de Dados
 
-Foram criadas visões (`VIEWS`) estratégicas para simplificar consultas complexas e restringir o acesso direto às tabelas base:
+O projeto foi desenhado seguindo os pilares fundamentais de administração e automação de bancos de dados:
 
-* **`vw_empregados_por_depto`**: Exibe o total de empregados agrupados por departamento.
-* **`vw_departamentos_gerentes`**: Lista os departamentos e seus respectivos gerentes responsáveis.
-* **`vw_empregados_departamento`**: Relatório detalhado unindo dados de funcionários e seus departamentos de lotação.
-* **`vw_ranking_salarios`**: Ranking ordenado de colaboradores com base nos salários de forma decrescente.
-
-### 🔒 Controle de Acesso (DCL)
-Foram configurados perfis de usuários com privilégios restritos às views e tabelas pertinentes:
-* **`gerente_user`**: Possui privilégios de leitura (`SELECT`) nas visões gerenciais e dados corporativos.
-* **`employee_user`**: Possui privilégios limitados apenas a relatórios gerais (como o ranking de salários), preservando a segurança de dados sensíveis.
+1. **Modelagem Relacional e Integridade (`DDL`):** Estruturação das tabelas base (`dept`, `emp`, `clients`) e da tabela de auditoria (`client_audit_log`), garantindo integridade referencial por meio de chaves primárias, restrições de unicidade e chaves estrangeiras com propagação em cascata (`CASCADE`).
+2. **Camada de Abstração (`Views`):** Criação de visões estratégicas (`vw_empregados_por_depto`, `vw_departamentos_gerentes`, `vw_empregados_departamento`, `vw_ranking_salarios`) para consolidar consultas complexas com `JOIN` e agregações, ocultando a estrutura física das tabelas.
+3. **Controle de Acesso Baseado em Papéis (`DCL`):** Segregação de privilégios entre contas de usuários distintas:
+   - **`gerente_user`:** Acesso de leitura (`SELECT`) às visões gerenciais e departamentais.
+   - **`employee_user`:** Acesso restrito apenas a relatórios gerais (ranking salarial), bloqueando dados administrativos sensíveis.
+4. **Automação Preventiva (`BEFORE UPDATE`):** Gatilho (`trg_client_before_update`) que intercepta alterações cadastrais para impedir que o campo de CPF seja esvaziado ou nulificado acidentalmente, preservando o dado original.
+5. **Auditoria de Remoção (`BEFORE DELETE`):** Gatilho (`trg_client_before_delete`) que captura os dados do cliente (`ID`, `Nome` e `CPF`) imediatamente antes da exclusão da conta, gravando o histórico na tabela `client_audit_log`.
 
 ---
 
-## ⚙️ Parte 2 – Automatização de Ações com Triggers
+## 🚀 O Script SQL (Código-Fonte)
 
-Para garantir a integridade dos dados e a segurança das informações de clientes no e-commerce, foram implementados dois gatilhos principais:
+Copie o código abaixo e execute no seu **MySQL Workbench** para recriar toda a estrutura, visões, permissões e triggers do projeto.
 
-1. **`trg_client_before_update` (Atualização Preventiva):**
-   * *Objetivo:* Valida se o CPF do cliente foi enviado nulo ou em branco durante uma atualização, mantendo automaticamente o CPF anterior e evitando corrupção de dados.
-2. **`trg_client_before_delete` (Auditoria de Remoção):**
-   * *Objetivo:* Antes que um cliente exclua sua conta (`BEFORE DELETE`), a trigger captura os dados cadastrais (ID, Nome e CPF) e os arquiva de forma segura na tabela de log (`client_audit_log`).
-
----
-
-## 📝 Script SQL Completo de Execução
-
-Você pode reproduzir todo o ambiente executando o script unificado abaixo no seu MySQL Workbench:
+<details>
+<summary><b>Clique para expandir e copiar o Script SQL Completo</b></summary>
 
 ```sql
--- 1. Criação e Seleção do Banco de Dados
+-- 1. Criação e Seleção do Schema
 CREATE DATABASE IF NOT EXISTS ecommerce;
 USE ecommerce;
 
--- 2. Tabela de Departamentos
+-- 2. Criação das Tabelas Base
 CREATE TABLE IF NOT EXISTS `dept` (
   `DepNume` int(4) NOT NULL,
   `DepNome` char(20) NOT NULL,
@@ -67,7 +46,6 @@ CREATE TABLE IF NOT EXISTS `dept` (
   UNIQUE KEY `DepNum_Unique` (`DepNume`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- 3. Tabela de Empregados
 CREATE TABLE IF NOT EXISTS `emp` (
   `EmpNume` int(5) NOT NULL,
   `EmpNome` char(30) NOT NULL,
@@ -78,11 +56,12 @@ CREATE TABLE IF NOT EXISTS `emp` (
   `EmpSala` int(10) DEFAULT NULL,
   `EmpComi` int(10) DEFAULT NULL,
   PRIMARY KEY (`EmpNume`),
+  UNIQUE KEY `EmpNum_Unique` (`EmpNume`),
+  KEY `EmpDep_Idx` (`DepNume`),
   CONSTRAINT `fk_emp_dept` FOREIGN KEY (`DepNume`) REFERENCES `dept` (`DepNume`) 
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- 4. Tabela de Clientes para as Triggers
 CREATE TABLE IF NOT EXISTS `clients` (
     `idCLIENTE` INT AUTO_INCREMENT PRIMARY KEY,
     `Pnome` VARCHAR(20) NOT NULL,
@@ -90,34 +69,84 @@ CREATE TABLE IF NOT EXISTS `clients` (
     `CPF` CHAR(11) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- 5. Tabela de Auditoria
-CREATE TABLE IF NOT EXISTS client_audit_log (
-    idLOG INT AUTO_INCREMENT PRIMARY KEY,
-    idCLIENTE INT,
-    NomeCliente VARCHAR(50),
-    CPF_Cliente CHAR(11),
-    DataExclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS `client_audit_log` (
+    `idLOG` INT AUTO_INCREMENT PRIMARY KEY,
+    `idCLIENTE` INT,
+    `NomeCliente` VARCHAR(50),
+    `CPF_Cliente` CHAR(11),
+    `DataExclusao` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Criação de Views
+-- 3. Inserção de Dados Iniciais
+INSERT IGNORE INTO `dept` (`DepNume`, `DepNome`, `DepLoca`, `DepOrca`) VALUES
+(10, 'PRESIDENCIA', 'SAO PAULO', 10000),
+(20, 'INFORMATICA', 'RIO DE JANEIRO', 500000),
+(30, 'VENDAS', 'BRASILIA', 20000),
+(40, 'OPERACOES', 'BELO HORIZONTE', 300000),
+(50, 'FABRICA', 'SAO PAULO', 300000);
+
+INSERT IGNORE INTO `emp` (`EmpNume`, `EmpNome`, `EmpGere`, `EmpServ`, `DepNume`, `EmpAdmi`, `EmpSala`, `EmpComi`) VALUES
+(1001, 'HORTENCIA OLIVA', 8003, 'BALCONISTA', 40, '1981-02-11', 500, NULL),
+(1002, 'FERNANDA VENTURINNI', 8002, 'VENDEDOR', 30, '1983-04-01', 650, 50),
+(1007, 'ROBERTO CARLOS', 8001, 'ANALISTA', 20, '1981-01-09', 1300, NULL),
+(1020, 'ZETTI', 8004, 'OPERARIO', 50, '1981-12-01', 450, NULL),
+(8001, 'GAL COSTA', 9000, 'GERENTE', 20, '1979-05-01', 2900, NULL),
+(8002, 'MARIA BETHANIA', 9000, 'GERENTE', 30, '1980-06-07', 3400, NULL),
+(8003, 'MARINA LIMA', 9000, 'GERENTE', 40, '1982-07-05', 4000, NULL),
+(8004, 'DANIELA MERCURY', 9000, 'GERENTE', 50, '1985-08-08', 4500, NULL),
+(9000, 'FERNANDO HENRIQUE', NULL, 'PRESIDENTE', 10, '1980-09-01', 7000, NULL);
+
+INSERT IGNORE INTO `clients` (`idCLIENTE`, `Pnome`, `Sobrenome`, `CPF`) 
+VALUES (1, 'WASHINGTON', 'BRITO', '12345678901');
+
+-- 4. Criação das Views Gerenciais
 CREATE OR REPLACE VIEW vw_empregados_por_depto AS
-SELECT d.DepNome AS Departamento, COUNT(e.EmpNume) AS Total_Empregados
-FROM dept d LEFT JOIN emp e ON d.DepNume = e.DepNume
+SELECT 
+    d.DepNome AS Departamento,
+    COUNT(e.EmpNume) AS Total_Empregados
+FROM dept d
+LEFT JOIN emp e ON d.DepNume = e.DepNume
 GROUP BY d.DepNume, d.DepNome;
 
-CREATE OR REPLACE VIEW vw_ranking_salarios AS
-SELECT EmpNume, EmpNome, EmpServ, EmpSala
-FROM emp ORDER BY EmpSala DESC;
+CREATE OR REPLACE VIEW vw_departamentos_gerentes AS
+SELECT 
+    d.DepNume AS Codigo_Departamento,
+    d.DepNome AS Departamento,
+    e.EmpNome AS Nome_Gerente
+FROM dept d
+LEFT JOIN emp e ON d.DepNume = e.DepNume AND e.EmpServ = 'GERENTE';
 
--- 7. Controle de Acesso (DCL)
+CREATE OR REPLACE VIEW vw_empregados_departamento AS
+SELECT 
+    e.EmpNume AS Matricula,
+    e.EmpNome AS Nome_Empregado,
+    e.EmpServ AS Cargo,
+    d.DepNome AS Departamento,
+    e.EmpSala AS Salario
+FROM emp e
+JOIN dept d ON e.DepNume = d.DepNume;
+
+CREATE OR REPLACE VIEW vw_ranking_salarios AS
+SELECT 
+    EmpNume,
+    EmpNome,
+    EmpServ,
+    EmpSala
+FROM emp
+ORDER BY EmpSala DESC;
+
+-- 5. Controle de Acesso e Usuários (DCL)
 CREATE USER IF NOT EXISTS 'gerente_user'@'localhost' IDENTIFIED BY 'SenhaGerente123!';
 CREATE USER IF NOT EXISTS 'employee_user'@'localhost' IDENTIFIED BY 'SenhaEmp123!';
 
 GRANT SELECT ON ecommerce.vw_empregados_por_depto TO 'gerente_user'@'localhost';
+GRANT SELECT ON ecommerce.vw_departamentos_gerentes TO 'gerente_user'@'localhost';
+GRANT SELECT ON ecommerce.vw_empregados_departamento TO 'gerente_user'@'localhost';
 GRANT SELECT ON ecommerce.vw_ranking_salarios TO 'employee_user'@'localhost';
+
 FLUSH PRIVILEGES;
 
--- 8. Triggers de Automação
+-- 6. Automação de Regras de Negócio (Triggers)
 DELIMITER //
 
 DROP TRIGGER IF EXISTS trg_client_before_update //
