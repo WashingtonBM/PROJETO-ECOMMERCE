@@ -1,0 +1,320 @@
+# 🚀 Projeto E-commerce & Gestão Corporativa: MySQL Avançado (DIO)
+
+Repositório dedicado à entrega do desafio de projeto da **DIO (Digital Innovation One)**, focado em **Personalização de Acessos com 
+Views**, 
+**Controle de Permissões (DCL)** e **Automação de Ações com Triggers** utilizando o MySQL.
+
+---
+
+## 🛠️ Tecnologias e Ferramentas Utilizadas
+* **Banco de Dados:** MySQL / MySQL Workbench
+* **Linguagem:** SQL (DDL, DML, DCL)
+* **Conceitos Aplicados:** Relacionamentos (1:N), Views Gerenciais, Segurança baseada em Contas de Usuários e Triggers
+* (Gatilhos de Banco).
+
+---
+
+## 📂 Estrutura do Banco de Dados (`ecommerce`)
+
+O projeto integra a modelagem de departamentos/colaboradores com o cenário de e-commerce, estruturando as seguintes tabelas principais:
+1. **`dept`**: Tabela de departamentos (Pai) com chave primária e restrições de unicidade.
+2. **`emp`**: Tabela de colaboradores vinculada aos departamentos através de Chave Estrangeira (`FOREIGN KEY`) com suporte a cascata
+(`CASCADE`).
+3. **`clients`**: Tabela de clientes do e-commerce.
+4. **`client_audit_log`**: Tabela de log estruturada para auditoria de remoção de registros.
+
+---
+
+## 📊 Parte 1 – Personalização de Acessos com Views
+
+Foram criadas visões (`VIEWS`) estratégicas para simplificar consultas complexas e restringir o acesso direto às tabelas base:
+
+* **`vw_empregados_por_depto`**: Exibe o total de empregados agrupados por departamento.
+* **`vw_departamentos_gerentes`**: Lista os departamentos e seus respectivos gerentes responsáveis.
+* **`vw_empregados_departamento`**: Relatório detalhado unindo dados de funcionários e seus departamentos de lotação.
+* **`vw_ranking_salarios`**: Ranking ordenado de colaboradores com base nos salários de forma decrescente.
+
+### 🔒 Controle de Acesso (DCL)
+Foram configurados perfis de usuários com privilégios restritos às views e tabelas pertinentes:
+* **`gerente_user`**: Possui privilégios de leitura (`SELECT`) nas visões gerenciais e dados corporativos.
+* **`employee_user`**: Possui privilégios limitados apenas a relatórios gerais (como o ranking de salários), preservando a segurança
+* de dados sensíveis.
+
+---
+
+## ⚙️ Parte 2 – Automatização de Ações com Triggers
+
+Para garantir a integridade dos dados e a segurança das informações de clientes no e-commerce, foram implementados dois gatilhos 
+principais:
+
+1. **`trg_client_before_update` (Atualização Preventiva):**
+   * *Objetivo:* Valida se o CPF do cliente foi enviado nulo ou em branco durante uma atualização, mantendo automaticamente o CPF
+   anterior e evitando corrupção de dados.
+2. **`trg_client_before_delete` (Auditoria de Remoção):**
+   * *Objetivo:* Antes que um cliente exclua sua conta (`BEFORE DELETE`), a trigger captura os dados cadastrais (ID, Nome e CPF)
+   * e os arquiva de forma segura na tabela de log (`client_audit_log`).
+
+---
+
+## 📝 Script SQL Completo de Execução
+
+Você pode reproduzir todo o ambiente executando o script unificado abaixo no seu MySQL Workbench:
+
+```sql
+-- 1. Criação e Seleção do Banco de Dados
+CREATE DATABASE IF NOT EXISTS ecommerce;
+USE ecommerce;
+
+-- 2. Tabela de Departamentos
+CREATE TABLE IF NOT EXISTS `dept` (
+  `DepNume` int(4) NOT NULL,
+  `DepNome` char(20) NOT NULL,
+  `DepLoca` char(20) NOT NULL,
+  `DepOrca` int(12) DEFAULT NULL,
+  PRIMARY KEY (`DepNume`),
+  UNIQUE KEY `DepNum_Unique` (`DepNume`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 3. Tabela de Empregados
+CREATE TABLE IF NOT EXISTS `emp` (
+  `EmpNume` int(5) NOT NULL,
+  `EmpNome` char(30) NOT NULL,
+  `EmpGere` int(5) DEFAULT NULL,
+  `EmpServ` char(20) DEFAULT NULL,
+  `DepNume` int(4) NOT NULL,
+  `EmpAdmi` date NOT NULL,
+  `EmpSala` int(10) DEFAULT NULL,
+  `EmpComi` int(10) DEFAULT NULL,
+  PRIMARY KEY (`EmpNume`),
+  CONSTRAINT `fk_emp_dept` FOREIGN KEY (`DepNume`) REFERENCES `dept` (`DepNume`) 
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 4. Tabela de Clientes para as Triggers
+CREATE TABLE IF NOT EXISTS `clients` (
+    `idCLIENTE` INT AUTO_INCREMENT PRIMARY KEY,
+    `Pnome` VARCHAR(20) NOT NULL,
+    `Sobrenome` VARCHAR(20),
+    `CPF` CHAR(11) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 5. Tabela de Auditoria
+CREATE TABLE IF NOT EXISTS client_audit_log (
+    idLOG INT AUTO_INCREMENT PRIMARY KEY,
+    idCLIENTE INT,
+    NomeCliente VARCHAR(50),
+    CPF_Cliente CHAR(11),
+    DataExclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Criação de Views
+CREATE OR REPLACE VIEW vw_empregados_por_depto AS
+SELECT d.DepNome AS Departamento, COUNT(e.EmpNume) AS Total_Empregados
+FROM dept d LEFT JOIN emp e ON d.DepNume = e.DepNume
+GROUP BY d.DepNume, d.DepNome;
+
+CREATE OR REPLACE VIEW vw_ranking_salarios AS
+SELECT EmpNume, EmpNome, EmpServ, EmpSala
+FROM emp ORDER BY EmpSala DESC;
+
+-- 7. Controle de Acesso (DCL)
+CREATE USER IF NOT EXISTS 'gerente_user'@'localhost' IDENTIFIED BY 'SenhaGerente123!';
+CREATE USER IF NOT EXISTS 'employee_user'@'localhost' IDENTIFIED BY 'SenhaEmp123!';
+
+GRANT SELECT ON ecommerce.vw_empregados_por_depto TO 'gerente_user'@'localhost';
+GRANT SELECT ON ecommerce.vw_ranking_salarios TO 'employee_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- 8. Triggers de Automação
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_client_before_update //
+CREATE TRIGGER trg_client_before_update
+BEFORE UPDATE ON clients
+FOR EACH ROW
+BEGIN
+    IF NEW.CPF IS NULL OR NEW.CPF = '' THEN
+        SET NEW.CPF = OLD.CPF;
+    END IF;
+END //
+
+DROP TRIGGER IF EXISTS trg_client_before_delete //
+CREATE TRIGGER trg_client_before_delete
+BEFORE DELETE ON clients
+FOR EACH ROW
+BEGIN
+    INSERT INTO client_audit_log (idCLIENTE, NomeCliente, CPF_Cliente)
+    VALUES (OLD.idCLIENTE, CONCAT(OLD.Pnome, ' ', IFNULL(OLD.Sobrenome,'')), OLD.CPF);
+END //
+
+DELIMITER ;
+
+
+👨‍💻 Autor
+Desenvolvido por Washington Brito durante a jornada de capacitação e desafios práticos da DIO.
+
+
+
+---
+
+```markdown
+# 🚀 Projeto E-commerce & Gestão Corporativa: MySQL Avançado (DIO)
+
+Repositório dedicado à entrega do desafio de projeto da **DIO (Digital Innovation One)**, focado em **Personalização de Acessos com
+Views**, **Controle de Permissões (DCL)** e **Automação de Ações com Triggers** utilizando o MySQL.
+
+---
+
+## 🛠️ Tecnologias e Ferramentas Utilizadas
+* **Banco de Dados:** MySQL / MySQL Workbench
+* **Linguagem:** SQL (DDL, DML, DCL)
+* **Conceitos Aplicados:** Relacionamentos (1:N), Views Gerenciais, Segurança baseada em Contas de Usuários e Triggers
+ (Gatilhos de Banco).
+
+---
+
+## 📂 Estrutura do Banco de Dados (`ecommerce`)
+
+O projeto integra a modelagem de departamentos/colaboradores com o cenário de e-commerce, estruturando as seguintes tabelas principais:
+1. **`dept`**: Tabela de departamentos (Pai) com chave primária e restrições de unicidade.
+2. **`emp`**: Tabela de colaboradores vinculada aos departamentos através de Chave Estrangeira (`FOREIGN KEY`) com suporte a cascata
+ (`CASCADE`).
+3. **`clients`**: Tabela de clientes do e-commerce.
+4. **`client_audit_log`**: Tabela de log estruturada para auditoria de remoção de registros.
+
+---
+
+## 📊 Parte 1 – Personalização de Acessos com Views
+
+Foram criadas visões (`VIEWS`) estratégicas para simplificar consultas complexas e restringir o acesso direto às tabelas base:
+
+* **`vw_empregados_por_depto`**: Exibe o total de empregados agrupados por departamento.
+* **`vw_departamentos_gerentes`**: Lista os departamentos e seus respectivos gerentes responsáveis.
+* **`vw_empregados_departamento`**: Relatório detalhado unindo dados de funcionários e seus departamentos de lotação.
+* **`vw_ranking_salarios`**: Ranking ordenado de colaboradores com base nos salários de forma decrescente.
+
+### 🔒 Controle de Acesso (DCL)
+Foram configurados perfis de usuários com privilégios restritos às views e tabelas pertinentes:
+* **`gerente_user`**: Possui privilégios de leitura (`SELECT`) nas visões gerenciais e dados corporativos.
+* **`employee_user`**: Possui privilégios limitados apenas a relatórios gerais (como o ranking de salários), preservando a segurança
+de dados sensíveis.
+
+---
+
+## ⚙️ Parte 2 – Automatização de Ações com Triggers
+
+Para garantir a integridade dos dados e a segurança das informações de clientes no e-commerce, foram implementados dois gatilhos
+principais:
+
+1. **`trg_client_before_update` (Atualização Preventiva):**
+   * *Objetivo:* Valida se o CPF do cliente foi enviado nulo ou em branco durante uma atualização, mantendo automaticamente o CPF
+anterior e evitando corrupção de dados.
+2. **`trg_client_before_delete` (Auditoria de Remoção):**
+   * *Objetivo:* Antes que um cliente exclua sua conta (`BEFORE DELETE`), a trigger captura os dados cadastrais (ID, Nome e CPF)
+e os arquiva de forma segura na tabela de log (`client_audit_log`).
+
+---
+
+## 📝 Script SQL Completo de Execução
+
+Você pode reproduzir todo o ambiente executando o script unificado abaixo no seu MySQL Workbench:
+
+```sql
+-- 1. Criação e Seleção do Banco de Dados
+CREATE DATABASE IF NOT EXISTS ecommerce;
+USE ecommerce;
+
+-- 2. Tabela de Departamentos
+CREATE TABLE IF NOT EXISTS `dept` (
+  `DepNume` int(4) NOT NULL,
+  `DepNome` char(20) NOT NULL,
+  `DepLoca` char(20) NOT NULL,
+  `DepOrca` int(12) DEFAULT NULL,
+  PRIMARY KEY (`DepNume`),
+  UNIQUE KEY `DepNum_Unique` (`DepNume`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 3. Tabela de Empregados
+CREATE TABLE IF NOT EXISTS `emp` (
+  `EmpNume` int(5) NOT NULL,
+  `EmpNome` char(30) NOT NULL,
+  `EmpGere` int(5) DEFAULT NULL,
+  `EmpServ` char(20) DEFAULT NULL,
+  `DepNume` int(4) NOT NULL,
+  `EmpAdmi` date NOT NULL,
+  `EmpSala` int(10) DEFAULT NULL,
+  `EmpComi` int(10) DEFAULT NULL,
+  PRIMARY KEY (`EmpNume`),
+  CONSTRAINT `fk_emp_dept` FOREIGN KEY (`DepNume`) REFERENCES `dept` (`DepNume`) 
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 4. Tabela de Clientes para as Triggers
+CREATE TABLE IF NOT EXISTS `clients` (
+    `idCLIENTE` INT AUTO_INCREMENT PRIMARY KEY,
+    `Pnome` VARCHAR(20) NOT NULL,
+    `Sobrenome` VARCHAR(20),
+    `CPF` CHAR(11) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 5. Tabela de Auditoria
+CREATE TABLE IF NOT EXISTS client_audit_log (
+    idLOG INT AUTO_INCREMENT PRIMARY KEY,
+    idCLIENTE INT,
+    NomeCliente VARCHAR(50),
+    CPF_Cliente CHAR(11),
+    DataExclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Criação de Views
+CREATE OR REPLACE VIEW vw_empregados_por_depto AS
+SELECT d.DepNome AS Departamento, COUNT(e.EmpNume) AS Total_Empregados
+FROM dept d LEFT JOIN emp e ON d.DepNume = e.DepNume
+GROUP BY d.DepNume, d.DepNome;
+
+CREATE OR REPLACE VIEW vw_ranking_salarios AS
+SELECT EmpNume, EmpNome, EmpServ, EmpSala
+FROM emp ORDER BY EmpSala DESC;
+
+-- 7. Controle de Acesso (DCL)
+CREATE USER IF NOT EXISTS 'gerente_user'@'localhost' IDENTIFIED BY 'SenhaGerente123!';
+CREATE USER IF NOT EXISTS 'employee_user'@'localhost' IDENTIFIED BY 'SenhaEmp123!';
+
+GRANT SELECT ON ecommerce.vw_empregados_por_depto TO 'gerente_user'@'localhost';
+GRANT SELECT ON ecommerce.vw_ranking_salarios TO 'employee_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- 8. Triggers de Automação
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_client_before_update //
+CREATE TRIGGER trg_client_before_update
+BEFORE UPDATE ON clients
+FOR EACH ROW
+BEGIN
+    IF NEW.CPF IS NULL OR NEW.CPF = '' THEN
+        SET NEW.CPF = OLD.CPF;
+    END IF;
+END //
+
+DROP TRIGGER IF EXISTS trg_client_before_delete //
+CREATE TRIGGER trg_client_before_delete
+BEFORE DELETE ON clients
+FOR EACH ROW
+BEGIN
+    INSERT INTO client_audit_log (idCLIENTE, NomeCliente, CPF_Cliente)
+    VALUES (OLD.idCLIENTE, CONCAT(OLD.Pnome, ' ', IFNULL(OLD.Sobrenome,'')), OLD.CPF);
+END //
+
+DELIMITER ;
+
+```
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido por **Washington Brito** durante a jornada de capacitação e desafios práticos da **DIO**.
+
+```
+```
