@@ -1,8 +1,13 @@
+PROJETO E-COMMERCE & GESTÃO CORPORATIVA: MYSQL AVANÇADO (DIO)
+
+Repositório dedicado à entrega do desafio de projeto da DIO (Digital Innovation One), focado em Personalização de Acessos com Views,
+Controle de Permissões (DCL) e Automação de Ações com Triggers utilizando o MySQL.
 ## 🛠️ TECNOLOGIAS E FERRAMENTAS UTILIZADAS
 
 * **Banco de Dados:** MySQL / MySQL Workbench
 * **Linguagem:** SQL (DDL, DML, DCL)
-* **Conceitos Aplicados:** Relacionamentos (1:N), Views Gerenciais, Segurança baseada em Contas de Usuários e Triggers (Gatilhos de Banco).
+* **Conceitos Aplicados:** Relacionamentos (1:N), Views Gerenciais, Segurança baseada em Contas de Usuários e Triggers
+(Gatilhos de Banco).
 
 ---
 
@@ -11,7 +16,8 @@
 O projeto integra a modelagem de departamentos/colaboradores com o cenário de e-commerce, estruturando as seguintes tabelas principais:
 
 1. **`dept`**: Tabela de departamentos (Pai) com chave primária e restrições de unicidade.
-2. **`emp`**: Tabela de colaboradores vinculada aos departamentos através de Chave Estrangeira (`FOREIGN KEY`) com suporte a cascata (`CASCADE`).
+2. **`emp`**: Tabela de colaboradores vinculada aos departamentos através de Chave Estrangeira (`FOREIGN KEY`) com suporte a cascata
+(`CASCADE`).
 3. **`clients`**: Tabela de clientes do e-commerce.
 4. **`client_audit_log`**: Tabela de log estruturada para auditoria de remoção de registros.
 
@@ -31,20 +37,24 @@ Foram criadas visões (`VIEWS`) estratégicas para simplificar consultas complex
 Foram configurados perfis de usuários com privilégios restritos às views e tabelas pertinentes:
 
 * **`gerente_user`**: Possui privilégios de leitura (`SELECT`) nas visões gerenciais e dados corporativos.
-* **`employee_user`**: Possui privilégios limitados apenas a relatórios gerais (como o ranking de salários), preservando a segurança de dados sensíveis.
+* **`employee_user`**: Possui privilégios limitados apenas a relatórios gerais (como o ranking de salários), preservando a segurança 
+de dados sensíveis.
 
 ---
 
 ## ⚙️ PARTE 2 – AUTOMAÇÃO DE AÇÕES COM TRIGGERS
 
-Para garantir a integridade dos dados e a segurança das informações de clientes no e-commerce, foram implementados dois gatilhos principais:
+Para garantir a integridade dos dados e a segurança das informações de clientes no e-commerce, foram implementados dois gatilhos 
+principais:
 
 1. **`trg_client_before_update` (Atualização Preventiva):**
-* **Objetivo:** Valida se o CPF do cliente foi enviado nulo ou em branco durante uma atualização, mantendo automaticamente o CPF anterior e evitando corrupção de dados.
+* **Objetivo:** Valida se o CPF do cliente foi enviado nulo ou em branco durante uma atualização, mantendo automaticamente o CPF 
+anterior e evitando corrupção de dados.
 
 
 2. **`trg_client_before_delete` (Auditoria de Remoção):**
-* **Objetivo:** Antes que um cliente exclua sua conta (`BEFORE DELETE`), a trigger captura os dados cadastrais (ID, Nome e CPF) e os arquiva de forma segura na tabela de log (`client_audit_log`).
+* **Objetivo:** Antes que um cliente exclua sua conta (`BEFORE DELETE`), a trigger captura os dados cadastrais (ID, Nome e CPF) 
+e os arquiva de forma segura na tabela de log (`client_audit_log`).
 
 
 
