@@ -1,4 +1,4 @@
-## 🛠️ TECNOLOGIAS E FERRAMENTAS UTILIZADAS
+## 🛠️ TECNOLOGIAS E FERRAMENTAS UTILIZADAS##
 
 * **Banco de Dados:** MySQL / MySQL Workbench
 * **Linguagem:** SQL (DDL, DML, DCL)
@@ -142,5 +142,9 @@ BEGIN
 END //
 
 DELIMITER ;
+
+```
+👨‍💻 Autor
+Desenvolvido por Washington Brito durante a jornada de capacitação e desafios práticos da DIO.
 
 ```
